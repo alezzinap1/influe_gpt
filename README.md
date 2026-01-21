@@ -4,8 +4,6 @@
 
 > 📖 **Полная документация находится в директории [docs/](docs/)**
 
-> 📖 **Полная документация находится в директории [docs/](docs/)**
-
 ## 📱 Пример использования
 
 <div align="center">
@@ -54,16 +52,6 @@
 | **6** | <img src="https://github.com/user-attachments/assets/471e9376-e80e-4b41-b755-b6d4056ed926" width="200"> | Результат с источниками |
 | **7** | <img src="https://github.com/user-attachments/assets/5c375a87-2772-4f4c-8604-1cfdc76b7930" width="200"> | Мультиканальный режим |
 
-## 🎯 Ключевые особенности
-
-<div align="center">
-  
-| Функция | Визуализация |
-|---------|--------------|
-| **Полная цепочка работы** | <img src="https://github.com/user-attachments/assets/016385ac-0987-4978-972d-bc9b612ea9c2" height="150"><br>→<br><img src="https://github.com/user-attachments/assets/471e9376-e80e-4b41-b755-b6d4056ed926" height="150"> |
-| **Адаптивный интерфейс** | <img src="https://github.com/user-attachments/assets/64d60d42-82b9-49a7-95d9-4e77e93c945b" height="150"><br>+<br><img src="https://github.com/user-attachments/assets/5c375a87-2772-4f4c-8604-1cfdc76b7930" height="150"> |
-
-</div>
 
 
 ## Быстрый старт
