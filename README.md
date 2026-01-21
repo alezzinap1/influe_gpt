@@ -4,6 +4,18 @@
 
 > 📖 **Полная документация находится в директории [docs/](docs/)**
 
+## Пример Юзкейса
+
+1. Старт <img width="1004" height="245" alt="image" src="https://github.com/user-attachments/assets/016385ac-0987-4978-972d-bc9b612ea9c2" />
+2. <img width="322" height="689" alt="image" src="https://github.com/user-attachments/assets/64d60d42-82b9-49a7-95d9-4e77e93c945b" />
+3. <img width="378" height="386" alt="image" src="https://github.com/user-attachments/assets/201b8d95-9878-4851-931c-a008725d4705" />
+4. Проверка статуса <img width="333" height="181" alt="image" src="https://github.com/user-attachments/assets/2f0a74dd-d0ac-43fd-b3be-437158dabe3d" />
+5. Думает <img width="995" height="181" alt="image" src="https://github.com/user-attachments/assets/5968a396-588e-4348-b7d6-69329e6df10e" />
+6. Получен ответ с указанными источниками (сообщения, которые дополнили генерацию в контексте) <img width="571" height="828" alt="image" src="https://github.com/user-attachments/assets/471e9376-e80e-4b41-b755-b6d4056ed926" />
+7. Так же есть функция мультиканальности(все они должны быть проиндексированы) <img width="399" height="614" alt="image" src="https://github.com/user-attachments/assets/5c375a87-2772-4f4c-8604-1cfdc76b7930" />
+
+
+
 ## Быстрый старт
 
 1. **Установка зависимостей:**
