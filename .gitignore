@@ -47,6 +47,20 @@ Thumbs.db
 *.tmp
 *.bak
 
+# секреты
+.env
+*.session
+
+# локальные данные/БД/индексы
+data/
+chroma_db/
+*.db
+*.sqlite3
+*.parquet
+
+# кэш/байткод
+__pycache__/
+*.pyc
 
 
 
