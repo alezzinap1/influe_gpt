@@ -835,12 +835,12 @@ async def ask_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         
         # Проверяем, это мультиканальный запрос?
         if multi_channels and len(multi_channels) >= 2:
-            # Мультиканальный запрос
-            ans = rag_answer_multi(multi_channels, question)
+            # Мультиканальный запрос (в потоке, чтобы не блокировать event loop)
+            ans = await asyncio.to_thread(rag_answer_multi, multi_channels, question)
             logger.info(f"[BOT] Мультиканальный ответ получен, длина: {len(ans)} символов")
         else:
             # Обычный запрос по одному каналу
-            ans = rag_answer(normalized_channel, question, mode)
+            ans = await asyncio.to_thread(rag_answer, normalized_channel, question, mode)
             logger.info(f"[BOT] Ответ получен, длина: {len(ans)} символов")
     except Exception:
         logger.exception("[BOT] Ошибка при генерации ответа RAG")

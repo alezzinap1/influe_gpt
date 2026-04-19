@@ -71,7 +71,7 @@ def execute_rag_query(
     cache = get_cache()
     
     # Пытаемся получить ответ из кэша
-    cached_answer = cache.get(question, channel, channels)
+    cached_answer = cache.get(question, channel, channels, backend=backend)
     if cached_answer:
         logger.info(f"[RAG] Ответ получен из кэша для вопроса: {question[:50]}...")
         return cached_answer
@@ -99,7 +99,7 @@ def execute_rag_query(
         
         # Сохраняем ответ в кэш
         if answer:
-            cache.set(question, answer, channel, channels)
+            cache.set(question, answer, channel, channels, backend=backend)
         
         return answer
         

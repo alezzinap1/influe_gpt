@@ -3,7 +3,7 @@ import hashlib
 import json
 import logging
 import time
-from typing import Optional, Any
+from typing import Any, Dict, List, Optional
 from functools import wraps
 
 logger = logging.getLogger(__name__)
@@ -118,8 +118,14 @@ class Cache:
         self.enabled = enabled
         self.default_ttl = default_ttl
     
-    def _make_key(self, question: str, channel: Optional[str] = None, channels: Optional[list] = None) -> str:
-        """Создает ключ кэша из вопроса и каналов."""
+    def _make_key(
+        self,
+        question: str,
+        channel: Optional[str] = None,
+        channels: Optional[List[str]] = None,
+        backend: str = "deepseek",
+    ) -> str:
+        """Создает ключ кэша из вопроса, каналов и LLM backend."""
         # Нормализуем вопрос (убираем лишние пробелы, приводим к нижнему регистру)
         normalized_question = " ".join(question.lower().split())
         
@@ -132,16 +138,24 @@ class Cache:
         else:
             cache_data = f"{normalized_question}:all"
         
+        cache_data = f"{cache_data}:backend:{backend}"
+        
         # Создаем хеш для короткого ключа
         key_hash = hashlib.md5(cache_data.encode()).hexdigest()
         return f"rag:answer:{key_hash}"
     
-    def get(self, question: str, channel: Optional[str] = None, channels: Optional[list] = None) -> Optional[str]:
+    def get(
+        self,
+        question: str,
+        channel: Optional[str] = None,
+        channels: Optional[List[str]] = None,
+        backend: str = "deepseek",
+    ) -> Optional[str]:
         """Получить ответ из кэша."""
         if not self.enabled:
             return None
         
-        key = self._make_key(question, channel, channels)
+        key = self._make_key(question, channel, channels, backend)
         cached = self.backend.get(key)
         
         if cached:
@@ -151,22 +165,36 @@ class Cache:
         logger.debug(f"[CACHE] Cache miss для вопроса: {question[:50]}...")
         return None
     
-    def set(self, question: str, answer: str, channel: Optional[str] = None, channels: Optional[list] = None, ttl: Optional[int] = None):
+    def set(
+        self,
+        question: str,
+        answer: str,
+        channel: Optional[str] = None,
+        channels: Optional[List[str]] = None,
+        backend: str = "deepseek",
+        ttl: Optional[int] = None,
+    ):
         """Сохранить ответ в кэш."""
         if not self.enabled:
             return
         
-        key = self._make_key(question, channel, channels)
+        key = self._make_key(question, channel, channels, backend)
         ttl = ttl or self.default_ttl
         self.backend.set(key, answer, ttl)
         logger.debug(f"[CACHE] Ответ сохранен в кэш (TTL: {ttl}s)")
     
-    def delete(self, question: str, channel: Optional[str] = None, channels: Optional[list] = None):
+    def delete(
+        self,
+        question: str,
+        channel: Optional[str] = None,
+        channels: Optional[List[str]] = None,
+        backend: str = "deepseek",
+    ):
         """Удалить ответ из кэша."""
         if not self.enabled:
             return
         
-        key = self._make_key(question, channel, channels)
+        key = self._make_key(question, channel, channels, backend)
         self.backend.delete(key)
     
     def clear(self):
@@ -196,6 +224,7 @@ def get_cache() -> Cache:
         _cache = Cache(backend, CACHE_ENABLED, CACHE_TTL)
     
     return _cache
+
 
 
 
