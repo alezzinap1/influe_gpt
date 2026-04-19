@@ -12,6 +12,9 @@ from settings import *
 
 logger = logging.getLogger(__name__)
 
+# Размер страницы при обходе метаданных канала (память вместо одного гигантского get)
+_CHANNEL_META_PAGE_SIZE = 2000
+
 try:
     import torch
     HAS_TORCH = True
@@ -128,6 +131,25 @@ class ChromaStore:
     def count(self):
         return self.collection.count()
 
+    def _iter_metadatas_for_channel(self, channel: str):
+        """Итерация по метаданным всех точек канала батчами (limit/offset)."""
+        offset = 0
+        while True:
+            results = self.collection.get(
+                where={"channel": channel},
+                limit=_CHANNEL_META_PAGE_SIZE,
+                offset=offset,
+                include=["metadatas"],
+            )
+            metas = results.get("metadatas") or []
+            if not metas:
+                break
+            for meta in metas:
+                yield meta
+            offset += len(metas)
+            if len(metas) < _CHANNEL_META_PAGE_SIZE:
+                break
+
     def has_chunks_for_channel(self, channel: str) -> bool:
         """Проверяет, есть ли обычные чанки (не summary) для указанного канала в ChromaDB."""
         try:
@@ -146,25 +168,15 @@ class ChromaStore:
                         return True
             return False
         except Exception as e:
-            print(f"Error checking chunks for channel {channel}: {e}")
+            logger.warning("Error checking chunks for channel %s: %s", channel, e)
             return False
 
     def count_chunks_for_channel(self, channel: str) -> int:
         """Подсчитывает количество обычных чанков (не summary) для канала."""
         try:
-            # Загружаем все метаданные для точного подсчета
-            # Это нормально, так как синхронизация вызывается только для неготовых каналов
-            results = self.collection.get(
-                where={"channel": channel}
-            )
-            if not results.get("metadatas"):
-                return 0
-            
-            # Подсчитываем только чанки (не summary и не author_report)
             count = 0
-            for meta in results["metadatas"]:
+            for meta in self._iter_metadatas_for_channel(channel):
                 chunk_type = meta.get("type", "")
-                # Обычные чанки Telegram не имеют type или имеют type="chunk"
                 if chunk_type not in ("summary", "author_report"):
                     count += 1
             return count
@@ -182,7 +194,7 @@ class ChromaStore:
             )
             return bool(results.get("metadatas") and len(results["metadatas"]) > 0)
         except Exception as e:
-            print(f"Error checking summaries for channel {channel}: {e}")
+            logger.warning("Error checking summaries for channel %s: %s", channel, e)
             return False
 
     def delete_channel_data(self, channel: str) -> dict:
@@ -196,17 +208,15 @@ class ChromaStore:
             dict с информацией о количестве удаленных записей
         """
         try:
-            # Подсчитываем количество перед удалением
-            chunks_count = self.count_chunks_for_channel(channel)
-            
-            # Получаем все записи канала для подсчета саммари
-            all_results = self.collection.get(where={"channel": channel})
+            chunks_count = 0
             summaries_count = 0
-            if all_results.get("metadatas"):
-                for meta in all_results["metadatas"]:
-                    if meta.get("type") in ("summary", "author_report"):
-                        summaries_count += 1
-            
+            for meta in self._iter_metadatas_for_channel(channel):
+                t = meta.get("type", "")
+                if t in ("summary", "author_report"):
+                    summaries_count += 1
+                else:
+                    chunks_count += 1
+
             # Удаляем все данные канала
             self.collection.delete(where={"channel": channel})
             
@@ -217,7 +227,7 @@ class ChromaStore:
                 "total_deleted": chunks_count + summaries_count
             }
         except Exception as e:
-            print(f"Error deleting channel data for {channel}: {e}")
+            logger.error("Error deleting channel data for %s: %s", channel, e)
             return {
                 "success": False,
                 "error": str(e),
@@ -228,4 +238,4 @@ class ChromaStore:
 
 
 if __name__ == "__main__":
-    print(ChromaStore().count())
+    logger.info("Chroma collection count: %s", ChromaStore().count())
