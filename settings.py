@@ -32,6 +32,12 @@ if HAS_PYDANTIC_SETTINGS:
         chunks_k: int = Field(default=30, ge=1, le=100, description="Количество чанков")
         max_ctx_chars: int = Field(default=20000, ge=1000, description="Максимальная длина контекста")
         max_chunk_chars: int = Field(default=800, ge=100, description="Максимальная длина чанка")
+        rag_query_timeout_seconds: int = Field(
+            default=300,
+            ge=30,
+            le=3600,
+            description="Максимальное время ответа RAG в боте (секунды)",
+        )
 
         # LLM settings
         llm_model: str = Field(default="qwen2.5:0.5b", description="Модель LLM для локального использования")
@@ -150,6 +156,7 @@ if HAS_PYDANTIC_SETTINGS:
     CACHE_BACKEND = _settings.cache_backend
     REDIS_URL = _settings.redis_url
     CACHE_TTL = _settings.cache_ttl
+    RAG_QUERY_TIMEOUT_SECONDS = _settings.rag_query_timeout_seconds
 else:
     CHROMA_DIR = os.getenv("CHROMA_DIR", "./chroma_db")
     EMBED_MODEL = os.getenv("EMBED_MODEL", "intfloat/multilingual-e5-base")
@@ -177,6 +184,7 @@ else:
     CACHE_BACKEND = os.getenv("CACHE_BACKEND", "memory")
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     CACHE_TTL = int(os.getenv("CACHE_TTL", "3600"))
+    RAG_QUERY_TIMEOUT_SECONDS = int(os.getenv("RAG_QUERY_TIMEOUT_SECONDS", "300"))
 
 RAG_SYSTEM_PROMPT = (
     "Ты отвечаешь на вопросы только по данному контексту.\n"

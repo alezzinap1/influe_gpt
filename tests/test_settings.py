@@ -40,13 +40,16 @@ def test_settings_defaults():
         SUMM_K,
         CHUNKS_K,
         MAX_CTX_CHARS,
-        MAX_CHUNK_CHARS
+        MAX_CHUNK_CHARS,
+        RAG_QUERY_TIMEOUT_SECONDS,
     )
     assert TOP_K >= 1
     assert SUMM_K >= 1
     assert CHUNKS_K >= 1
     assert MAX_CTX_CHARS >= 1000
     assert MAX_CHUNK_CHARS >= 100
+    assert 30 <= RAG_QUERY_TIMEOUT_SECONDS <= 3600
+
 
 
 

@@ -70,7 +70,7 @@ def clean_model_text(text: str) -> str:
 
 
 # Токен бота загружается из settings.py (читается из .env)
-from settings import TELEGRAM_BOT_TOKEN, _settings
+from settings import TELEGRAM_BOT_TOKEN, _settings, RAG_QUERY_TIMEOUT_SECONDS
 from exceptions import ConfigurationError
 
 try:
@@ -830,18 +830,37 @@ async def ask_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         context.user_data["thinking_message_id"] = thinking_msg.message_id
         context.user_data["thinking_chat_id"] = thinking_msg.chat_id
 
+    _rag_timeout = float(RAG_QUERY_TIMEOUT_SECONDS)
     try:
         logger.info(f"[BOT] Вызов RAG pipeline для генерации ответа...")
-        
+
         # Проверяем, это мультиканальный запрос?
         if multi_channels and len(multi_channels) >= 2:
             # Мультиканальный запрос (в потоке, чтобы не блокировать event loop)
-            ans = await asyncio.to_thread(rag_answer_multi, multi_channels, question)
+            ans = await asyncio.wait_for(
+                asyncio.to_thread(rag_answer_multi, multi_channels, question),
+                timeout=_rag_timeout,
+            )
             logger.info(f"[BOT] Мультиканальный ответ получен, длина: {len(ans)} символов")
         else:
             # Обычный запрос по одному каналу
-            ans = await asyncio.to_thread(rag_answer, normalized_channel, question, mode)
+            ans = await asyncio.wait_for(
+                asyncio.to_thread(rag_answer, normalized_channel, question, mode),
+                timeout=_rag_timeout,
+            )
             logger.info(f"[BOT] Ответ получен, длина: {len(ans)} символов")
+    except asyncio.TimeoutError:
+        logger.warning("[BOT] RAG: превышен таймаут %.0f с", _rag_timeout)
+        if thinking_msg:
+            try:
+                await thinking_msg.delete()
+            except Exception:
+                pass
+        await BotMessageManager.error(
+            update,
+            "Ответ занял слишком много времени. Попробуйте короче вопрос или повторите позже.",
+        )
+        return ASKING
     except Exception:
         logger.exception("[BOT] Ошибка при генерации ответа RAG")
         # Удаляем "Думаю..." при ошибке

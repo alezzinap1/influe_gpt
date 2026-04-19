@@ -1,5 +1,6 @@
 # config_telegram.py
 from pathlib import Path
+import os
 
 DATA_DIR = Path("data")
 RAW_DIR = DATA_DIR / "raw"
@@ -28,23 +29,20 @@ def normalize_channel_name(channel: str) -> str:
     """
     if not channel:
         return ""
-    
-    # Убираем пробелы
-    channel = channel.strip()
-    
-    # Убираем https://t.me/ или http://t.me/
-    if channel.startswith("https://t.me/"):
-        channel = channel[len("https://t.me/"):]
-    elif channel.startswith("http://t.me/"):
-        channel = channel[len("http://t.me/"):]
-    
-    # Убираем @ в начале
-    channel = channel.lstrip("@")
-    
-    # Убираем пробелы еще раз
-    channel = channel.strip()
-    
-    return channel
+
+    s = channel.strip()
+    # Несколько проходов: @https://t.me/name → после снятия @ становится URL
+    for _ in range(5):
+        prev = s
+        if s.startswith("https://t.me/"):
+            s = s[len("https://t.me/") :]
+        elif s.startswith("http://t.me/"):
+            s = s[len("http://t.me/") :]
+        s = s.lstrip("@").strip()
+        if s == prev:
+            break
+
+    return s
 
 
 def raw_parquet_path(channel: str) -> Path:
@@ -55,6 +53,6 @@ def raw_parquet_path(channel: str) -> Path:
     return RAW_DIR / f"{safe}.parquet"
 
 
-TG_API_ID: int = 26949227
-TG_API_HASH: str = "ce1b9213cd2d0112eb4ab93bcccf25d3"
-TG_SESSION_NAME: str = "my_session"
+TG_API_ID: int = int(os.getenv("TG_API_ID", "0"))
+TG_API_HASH: str = os.getenv("TG_API_HASH", "")
+TG_SESSION_NAME: str = os.getenv("TG_SESSION_NAME", "my_session")

@@ -4,6 +4,7 @@ import sys
 import time
 import logging
 import hashlib
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Any, Optional, Tuple
 from settings import LLM_MODEL, OLLAMA_BASE, SUMM_K, CHUNKS_K, MAX_CTX_CHARS, MAX_CHUNK_CHARS
 from rag.llm_backends import OllamaBackend, DeepSeekBackend, OpenAIBackend, GeminiBackend
@@ -17,6 +18,29 @@ from utils.metrics import track_time, PerformanceMetrics
 sys.path.insert(0, '.')  # settings/ChromaStore
 
 logger = logging.getLogger(__name__)
+
+_CHROMA_QUERY_INCLUDE = ["metadatas", "documents", "distances"]
+
+
+def _documents_fingerprint(docs: List[str]) -> str:
+    """Инкрементальный отпечаток списка документов для кэша BM25 без join всего корпуса в одну строку."""
+    h = hashlib.md5()
+    sep = b"|"
+    for i, doc in enumerate(docs):
+        h.update(str(i).encode("ascii", errors="ignore"))
+        h.update(sep)
+        h.update(doc.encode("utf-8", errors="replace"))
+    return h.hexdigest()
+
+
+def _chroma_query(collection, emb: List[float], n_results: int, where: Optional[Dict[str, Any]]):
+    return collection.query(
+        query_embeddings=[emb],
+        n_results=n_results,
+        include=_CHROMA_QUERY_INCLUDE,
+        where=where,
+    )
+
 
 class RAGPipeline:
     def __init__(self, backend: str = "local"):
@@ -176,12 +200,6 @@ class RAGPipeline:
         else:
             # Все каналы
             where_summ = {"type": {"$eq": "summary"}}
-        res_summ = self.store.collection.query(
-            query_embeddings=[emb],
-            n_results=SUMM_K,
-            include=["metadatas", "documents", "distances"],
-            where=where_summ,
-        )
 
         # 2.2 Сырые чанки
         where_chunks = {"type": {"$ne": "summary"}}
@@ -189,12 +207,17 @@ class RAGPipeline:
             where_chunks = {"$and": [where_chunks, where_base]}
 
         logger.info(f"[RAG] Поиск в ChromaDB: саммари (K={SUMM_K}) и чанки (K={CHUNKS_K})...")
-        res_chunks = self.store.collection.query(
-            query_embeddings=[emb],
-            n_results=CHUNKS_K,
-            include=["metadatas", "documents", "distances"],
-            where=where_chunks,
-        )
+        coll = self.store.collection
+        try:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                fut_summ = pool.submit(_chroma_query, coll, emb, SUMM_K, where_summ)
+                fut_chunks = pool.submit(_chroma_query, coll, emb, CHUNKS_K, where_chunks)
+                res_summ = fut_summ.result()
+                res_chunks = fut_chunks.result()
+        except Exception as e:
+            logger.warning("[RAG] Параллельный запрос Chroma не удался (%s), последовательный режим.", e)
+            res_summ = _chroma_query(coll, emb, SUMM_K, where_summ)
+            res_chunks = _chroma_query(coll, emb, CHUNKS_K, where_chunks)
         
         # НОВОЕ: Keyword-based постфильтрация (после получения результатов)
         # Извлекаем keywords из вопроса для фильтрации
@@ -240,9 +263,7 @@ class RAGPipeline:
             dists = res["distances"][0]
 
             # Кэширование BM25 индекса: создаем только если документы изменились
-            # Используем хеш содержимого документов для проверки изменений
-            docs_str = "|".join(docs)
-            docs_hash = hashlib.md5(docs_str.encode()).hexdigest()
+            docs_hash = _documents_fingerprint(docs)
             
             if self.bm25_corpus_hash != docs_hash:
                 logger.debug(f"[RAG] Создание BM25 индекса для {len(docs)} документов...")

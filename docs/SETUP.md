@@ -35,6 +35,9 @@ GEMINI_API_KEY=your_gemini_key
 
 # LLM Backend для саммари (deepseek, gemini, openai)
 SUMMARY_BACKEND=deepseek
+
+# Опционально: таймаут ответа RAG в Telegram-боте (секунды, 30–3600)
+# RAG_QUERY_TIMEOUT_SECONDS=300
 ```
 
 ## Получение токенов и ключей
